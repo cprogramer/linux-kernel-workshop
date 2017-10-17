@@ -3,21 +3,45 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/miscdevice.h>
+#include <linux/string.h>
+#include <linux/uaccess.h>
+#include <linux/fs.h>
+#include <linux/errno.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Petar Misic");
 MODULE_DESCRIPTION("My first module :)");
 
-static __init int hello_init(void)
+char output[] = "ZuehlkeCamp2017\n";
+
+static ssize_t simple_read(struct file *opened_file,
+	char __user *user, size_t amount, loff_t *offset)
 {
-	pr_debug("Hello world!\n");
-	return 0;
+	return simple_read_from_buffer(user, amount, offset,
+		output, sizeof(output));
 }
 
-static void hello_exit(void)
+static ssize_t simple_write(struct file *opened_file,
+	const char __user *user, size_t amount, loff_t *offset)
 {
-	pr_debug("Goodbye world!\n");
+	if(strcmp(output,user) == 0) {
+		return sizeof(output);
+	}
+	return -EINVAL;
 }
 
-module_init(hello_init);
-module_exit(hello_exit);
+static const struct file_operations my_fops = {
+	.owner			= THIS_MODULE,
+    .write			= simple_write,
+	.read			= simple_read
+};
+
+static struct miscdevice misc_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "Zuehlke",
+	.fops = &my_fops,
+	.mode = 0666
+};
+
+module_misc_device(misc_device);
