@@ -27,16 +27,16 @@ static ssize_t simple_write(struct file *opened_file,
 {
 	int osize = strlen(output);
 	char tmp[osize + 1];
-	int isize = simple_write_to_buffer(tmp,osize,offset,user,amount);
-	if(isize == osize && strncmp(output, user, osize) == 0) {
+	int isize = simple_write_to_buffer(tmp, osize, offset, user, amount);
+
+	if (isize == osize && strncmp(output, user, osize) == 0)
 		return strlen(output);
-	}
 	return -EINVAL;
 }
 
 static const struct file_operations my_fops = {
 	.owner			= THIS_MODULE,
-    .write			= simple_write,
+	.write			= simple_write,
 	.read			= simple_read
 };
 
