@@ -8,6 +8,7 @@
 
 u64 start;
 u64 end;
+struct timeval time;
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Petar Misic");
@@ -23,7 +24,6 @@ static __init int hello_init(void)
 static void hello_exit(void)
 {
 	end = get_jiffies_64();
-	struct timeval time;
 
 	jiffies_to_timeval(end - start, &time);
 	pr_debug("Goodbye world!\n");
