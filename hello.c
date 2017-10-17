@@ -25,8 +25,10 @@ static ssize_t simple_read(struct file *opened_file,
 static ssize_t simple_write(struct file *opened_file,
 	const char __user *user, size_t amount, loff_t *offset)
 {
-	if(strcmp(output,user) == 0) {
-		return sizeof(output);
+	int isize = amount;
+	int osize = strlen(output);
+	if(isize == osize && strncmp(output, user, osize) == 0) {
+		return strlen(output);
 	}
 	return -EINVAL;
 }
