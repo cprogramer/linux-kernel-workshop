@@ -60,8 +60,6 @@ struct identity *identity_find(int id) {
 void identity_destroy(int id) {
 	struct list_head *ptr,*next;
     struct identity *entry;
-    ptr = my_list;
-    next = my_list->next;
 
     list_for_each_safe(ptr, next, my_list) {
         entry = list_entry(ptr, struct identity, list);
@@ -75,10 +73,8 @@ void identity_destroy(int id) {
 int identity_destroy_all(void) {
 	struct list_head *ptr,*next;
     struct identity *entry;
-    ptr = my_list;
-    next = my_list->next;
     
-    list_for_each_safe(ptr,next, my_list) {
+    list_for_each_safe(ptr, next, my_list) {
         entry = list_entry(ptr, struct identity, list);
         identity_destroy(entry->id);
     }
