@@ -115,8 +115,12 @@ static int __init misc_init(void)
     }
     my_list = kmalloc(sizeof(struct list_head),GFP_KERNEL);
     INIT_LIST_HEAD(my_list);
-    identity_create("Hello",52);
-    identity_create("Pera",26);
+    if((error = identity_create("Hello",52)) != 0) {
+        goto error_handle;
+    }
+    if((error = identity_create("Pera",26)) != 0) {
+        goto error_handle;
+    }
 
     pr_info("I found %s",identity_find(26)->name);
     identity_destroy(26);
@@ -128,6 +132,11 @@ static int __init misc_init(void)
     id = debugfs_create_file("id", 0666, root, NULL, &id_fops);
     
     return 0;
+
+error_handle:
+    identity_destroy_all();
+    kfree(my_list);
+    return error;
 }
 
 
