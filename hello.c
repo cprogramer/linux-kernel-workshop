@@ -32,19 +32,21 @@ char output[] = "ZuehlkeCamp2017\n";
 struct dentry *root;
 struct dentry *id;
 
-int identity_create(char *name,int id) {
+int identity_create(char *name,int id)
+{
 	struct identity *new_ones;
-	new_ones = kmalloc(sizeof(struct identity),GFP_KERNEL);
+	new_ones = kmalloc(sizeof(struct identity), GFP_KERNEL);
     if(strlen(name) >= 31) {
         return -EINVAL;
     }
-    strcpy(new_ones->name,name);
+    strcpy(new_ones->name, name);
     new_ones->id = id;
-    list_add(&new_ones->list,my_list);
+    list_add(&new_ones->list, my_list);
     return 0;
 }
 
-struct identity *identity_find(int id) {
+struct identity *identity_find(int id)
+{
 	struct list_head *ptr;
     struct identity *entry;
 
@@ -57,7 +59,8 @@ struct identity *identity_find(int id) {
     return NULL;
 }
 
-void identity_destroy(int id) {
+void identity_destroy(int id)
+{
 	struct list_head *ptr,*next;
     struct identity *entry;
 
@@ -70,7 +73,8 @@ void identity_destroy(int id) {
     }
 }
 
-int identity_destroy_all(void) {
+int identity_destroy_all(void)
+{
 	struct list_head *ptr,*next;
     struct identity *entry;
     
@@ -116,10 +120,13 @@ static int __init misc_init(void)
 
     pr_info("I found %s",identity_find(26)->name);
     identity_destroy(26);
+    if(identity_find(26) == NULL) {
+        pr_info("I found nothing man!\n");
+    }
 
     root = debugfs_create_dir("zuehlke", NULL);
     id = debugfs_create_file("id", 0666, root, NULL, &id_fops);
-    pr_info("I'm in\n");
+    
     return 0;
 }
 
