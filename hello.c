@@ -1,5 +1,6 @@
 
 #define DDEBUG
+#define MAX_NAME 32
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -27,7 +28,7 @@ MODULE_DESCRIPTION("My first module :)");
 
 struct identity {
 	struct list_head list;
-	char name[32];
+	char name[MAX_NAME];
 	int id;
 };
 
@@ -38,6 +39,7 @@ static struct task_struct *my_kthread;
 
 char output[] = "ZuehlkeCamp2017\n";
 char cache_name[] = "my list cache";
+static int id_counter;
 struct dentry *root;
 struct dentry *id;
 seqlock_t lock;
@@ -55,11 +57,24 @@ int identity_create(char *name,int id)
     return 0;
 }
 
+int identity_create_trunc(char *name,int id)
+{
+    struct identity *new_ones;
+    new_ones = kmem_cache_alloc(cache, GFP_KERNEL);
+    strncpy(new_ones->name, name, MAX_NAME - 1);
+    new_ones->id = id;
+    list_add_tail(&new_ones->list, my_list);
+    return 0;
+}
+
 int my_thread(void *data)
 {
+    int res;
     while(!kthread_should_stop()) {
-        pr_info("Something works man!\n");
-        wait_event_interruptible_timeout(my_wait_queue, kthread_should_stop(), HZ);
+        res = wait_event_interruptible_timeout(my_wait_queue, kthread_should_stop(), HZ);
+        if(!res) {
+            pr_info("condition zero!\n");
+        }
     }
     return 0;
 }
@@ -95,14 +110,26 @@ void identity_destroy(int id)
 
 struct identity *pop_identity(void)
 {
-    struct identity *entry;
+    struct identity *entry = NULL;
 
     write_seqlock(&lock);
-    entry = list_entry(my_list->next, struct identity, list);
-    list_del(&entry->list);
+    if(my_list->next != NULL) {
+        entry = list_entry(my_list->next, struct identity, list);
+        list_del(&entry->list);
+    }
     write_sequnlock(&lock);
 
     return entry;
+}
+
+int write(char *name)
+{
+    int res;
+    write_seqlock(&lock);
+    res = identity_create_trunc(name, ++id_counter);
+    write_sequnlock(&lock);
+    wake_up(&my_wait_queue);
+    return res;
 }
 
 int identity_destroy_all(void)
@@ -145,18 +172,20 @@ static int __init misc_init(void)
         pr_err("can't misc_register :(\n");
         return error;
     }
+    init_waitqueue_head(& my_wait_queue);
     seqlock_init(&lock);
+    id_counter = 0;
     my_list = kmalloc(sizeof(struct list_head),GFP_KERNEL);
     cache = kmem_cache_create(cache_name, sizeof(struct identity), 0, 0, NULL);
     INIT_LIST_HEAD(my_list);
     if((error = identity_create("Hello",52)) != 0) {
         goto error_handle;
     }
-    if((error = identity_create("Pera",26)) != 0) {
+    if((error = write("Pera")) != 0) {
         goto error_handle;
     }
 
-    pr_info("I found %s",identity_find(26)->name);
+    pr_info("I found %s",identity_find(1)->name);
     pr_info("I found %s",pop_identity()->name);
     identity_destroy(26);
     if(identity_find(26) == NULL) {
@@ -166,7 +195,6 @@ static int __init misc_init(void)
     root = debugfs_create_dir("zuehlke", NULL);
     id = debugfs_create_file("id", 0666, root, NULL, &id_fops);
 
-    init_waitqueue_head(& my_wait_queue);
     my_kthread = kthread_run(my_thread, NULL, "Zuehlke Thread!");
     
     return 0;
