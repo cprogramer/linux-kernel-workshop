@@ -27,21 +27,23 @@ struct identity {
 };
 
 static struct list_head *my_list;
+static struct kmem_cache *cache;
 
 char output[] = "ZuehlkeCamp2017\n";
+char cache_name[] = "my list cache";
 struct dentry *root;
 struct dentry *id;
 
 int identity_create(char *name,int id)
 {
 	struct identity *new_ones;
-	new_ones = kmalloc(sizeof(struct identity), GFP_KERNEL);
+	new_ones = kmem_cache_alloc(cache, GFP_KERNEL);
     if(strlen(name) >= 31) {
         return -EINVAL;
     }
     strcpy(new_ones->name, name);
     new_ones->id = id;
-    list_add(&new_ones->list, my_list);
+    list_add_tail(&new_ones->list, my_list);
     return 0;
 }
 
@@ -68,7 +70,7 @@ void identity_destroy(int id)
         entry = list_entry(ptr, struct identity, list);
         if (entry->id == id) {
         	list_del(&entry->list);
-        	kfree(entry);
+        	kmem_cache_free(cache, entry);
         }
     }
 }
@@ -114,6 +116,7 @@ static int __init misc_init(void)
         return error;
     }
     my_list = kmalloc(sizeof(struct list_head),GFP_KERNEL);
+    cache = kmem_cache_create(cache_name, sizeof(struct identity), 0, 0, NULL);
     INIT_LIST_HEAD(my_list);
     if((error = identity_create("Hello",52)) != 0) {
         goto error_handle;
@@ -144,6 +147,7 @@ static void __exit misc_exit(void)
 {
 	identity_destroy_all();
     kfree(my_list);
+    kmem_cache_destroy(cache);
     misc_deregister(&misc_device);
     debugfs_remove_recursive(root);
 }
