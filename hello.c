@@ -26,7 +26,7 @@ struct identity {
 	int id;
 };
 
-static struct identity *my_list;
+static struct list_head *my_list;
 
 char output[] = "ZuehlkeCamp2017\n";
 struct dentry *root;
@@ -35,9 +35,12 @@ struct dentry *id;
 int identity_create(char *name,int id) {
 	struct identity *new_ones;
 	new_ones = kmalloc(sizeof(struct identity),GFP_KERNEL);
+    if(strlen(name) >= 31) {
+        return -EINVAL;
+    }
     strcpy(new_ones->name,name);
     new_ones->id = id;
-    list_add(&new_ones->list,&my_list->list);
+    list_add(&new_ones->list,my_list);
     return 0;
 }
 
@@ -45,7 +48,7 @@ struct identity *identity_find(int id) {
 	struct list_head *ptr;
     struct identity *entry;
 
-    for (ptr = my_list->list.next; ptr != &my_list->list; ptr = ptr->next) {
+    list_for_each(ptr, my_list) {
         entry = list_entry(ptr, struct identity, list);
         if (entry->id == id) {
             return entry;
@@ -55,13 +58,13 @@ struct identity *identity_find(int id) {
 }
 
 void identity_destroy(int id) {
-	struct list_head *ptr;
+	struct list_head *ptr,*next;
     struct identity *entry;
-    ptr = my_list->list.next; 
+    ptr = my_list;
+    next = my_list->next;
 
-    while (ptr != &my_list->list) {
+    list_for_each_safe(ptr, next, my_list) {
         entry = list_entry(ptr, struct identity, list);
-        ptr = ptr->next;
         if (entry->id == id) {
         	list_del(&entry->list);
         	kfree(entry);
@@ -70,14 +73,14 @@ void identity_destroy(int id) {
 }
 
 int identity_destroy_all(void) {
-	struct list_head *ptr;
+	struct list_head *ptr,*next;
     struct identity *entry;
+    ptr = my_list;
+    next = my_list->next;
     
-    for (ptr = my_list->list.next; ptr != &my_list->list; ptr = ptr->next) {
-        if(ptr->prev != NULL) {
-        	entry = list_entry(ptr->prev, struct identity, list);
-        	identity_destroy(entry->id);
-    	}
+    list_for_each_safe(ptr,next, my_list) {
+        entry = list_entry(ptr, struct identity, list);
+        identity_destroy(entry->id);
     }
 
     return 0;
@@ -110,8 +113,8 @@ static int __init misc_init(void)
         pr_err("can't misc_register :(\n");
         return error;
     }
-    my_list = kmalloc(sizeof(struct identity),GFP_KERNEL);
-    INIT_LIST_HEAD(&my_list->list);
+    my_list = kmalloc(sizeof(struct list_head),GFP_KERNEL);
+    INIT_LIST_HEAD(my_list);
     identity_create("Hello",52);
     identity_create("Pera",26);
 
@@ -128,6 +131,7 @@ static int __init misc_init(void)
 static void __exit misc_exit(void)
 {
 	identity_destroy_all();
+    kfree(my_list);
     misc_deregister(&misc_device);
     debugfs_remove_recursive(root);
 }
